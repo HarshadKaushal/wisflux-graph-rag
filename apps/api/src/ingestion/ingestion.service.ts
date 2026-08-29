@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheService } from '../cache/cache.service';
 import { DocumentEntity } from '../documents/entities/document.entity';
 import { ChunkEntity } from '../documents/entities/chunk.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
@@ -23,6 +24,7 @@ export class IngestionService {
     private readonly embeddings: EmbeddingsService,
     private readonly vectorService: VectorService,
     private readonly graphBuilder: GraphBuilderService,
+    private readonly cache: CacheService,
   ) {}
 
   ingestDocument(documentId: string): void {
@@ -141,6 +143,7 @@ export class IngestionService {
     try {
       await this.documentsRepo.update(documentId, { status: 'extracting' });
       await this.graphBuilder.buildGraphForDocument(documentId);
+      await this.cache.invalidateRetrievalCaches();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown graph extraction error';

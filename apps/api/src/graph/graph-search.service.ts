@@ -42,6 +42,26 @@ export class GraphSearchService {
       matched = await this.graph.findEntitiesInQueryText(query, documentIds);
     }
 
+    // Resume / first-person questions ("my internship", "where did I study")
+    // often omit the person's name — seed from Person entities in scoped docs.
+    if (
+      documentIds &&
+      documentIds.length > 0 &&
+      this.isFirstPersonQuery(query)
+    ) {
+      const persons = await this.graph.findPersonEntitiesByDocuments(
+        documentIds,
+      );
+      const byId = new Map(matched.map((m) => [m.id, m]));
+      for (const p of persons) {
+        byId.set(p.id, p);
+      }
+      matched = [...byId.values()];
+      this.logger.debug(
+        `First-person seed: added ${persons.length} Person entit(y/ies)`,
+      );
+    }
+
     if (matched.length === 0) {
       return {
         queryEntities: [],
@@ -223,5 +243,9 @@ export class GraphSearchService {
       }
     }
     return summary;
+  }
+
+  private isFirstPersonQuery(query: string): boolean {
+    return /\b(i|me|my|myself|mine)\b/i.test(query);
   }
 }

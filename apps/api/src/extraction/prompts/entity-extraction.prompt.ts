@@ -17,6 +17,12 @@ Rules:
 - Use canonical full names when available.
 - Every relationship must reference entity names from the entities array.
 - Include evidence as a short direct quote.
+- Prefer useful relationship coverage (do not leave people/orgs isolated if the text states a link):
+  - Person → Organization employment/internship → WORKS_AT
+  - Person → school/university education → PART_OF
+  - Person → skill/tool/technology they use → OTHER (evidence should quote the skill context)
+  - Organization/school → Location → LOCATED_IN
+  - Product/tool dependencies → DEPENDS_ON
 - If no relationships exist, return an empty relationships array.
 - Do not invent facts not present in the text.`;
 

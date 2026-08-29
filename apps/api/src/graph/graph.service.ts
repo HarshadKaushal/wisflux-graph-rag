@@ -208,6 +208,34 @@ export class GraphService {
     }));
   }
 
+  async findPersonEntitiesByDocuments(
+    documentIds: string[],
+  ): Promise<GraphEntityNode[]> {
+    if (documentIds.length === 0) return [];
+
+    const records = await this.neo4j.run<{
+      id: string;
+      name: string;
+      type: string;
+      normalizedName: string;
+    }>(
+      `
+      MATCH (d:Document)-[:HAS_CHUNK]->(:Chunk)-[:MENTIONS]->(e:Entity)
+      WHERE d.id IN $documentIds AND e.type = 'Person'
+      RETURN DISTINCT e.id AS id, e.name AS name, e.type AS type, e.normalizedName AS normalizedName
+      ORDER BY e.name
+      `,
+      { documentIds },
+    );
+
+    return records.map((r) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      normalizedName: r.normalizedName,
+    }));
+  }
+
   async getDocumentSubgraph(documentId: string): Promise<GraphSubgraph> {
     const nodes = await this.getEntitiesByDocument(documentId);
 

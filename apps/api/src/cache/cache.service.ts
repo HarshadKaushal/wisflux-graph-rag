@@ -151,4 +151,24 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   getResponseTtl(): number {
     return this.responseTtl;
   }
+
+  /** Drop chat/hybrid answers after the knowledge graph changes. */
+  async invalidateRetrievalCaches(): Promise<number> {
+    if (!this.isReady() || !this.client) return 0;
+    try {
+      const keys = [
+        ...(await this.client.keys('chat:*')),
+        ...(await this.client.keys('hybrid:*')),
+      ];
+      if (keys.length === 0) return 0;
+      await this.client.del(...keys);
+      this.logger.log(`Invalidated ${keys.length} chat/hybrid cache key(s)`);
+      return keys.length;
+    } catch (error) {
+      this.logger.warn(
+        `Cache invalidation failed: ${error instanceof Error ? error.message : error}`,
+      );
+      return 0;
+    }
+  }
 }

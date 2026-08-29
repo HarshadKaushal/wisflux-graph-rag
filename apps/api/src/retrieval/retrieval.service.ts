@@ -120,8 +120,12 @@ export class RetrievalService {
       retrievalQuery = expanded.rewritten || retrievalQuery;
     }
 
+    // Keep the original wording so first-person cues ("I/me/my") survive rewrite
+    // and resume Person seeding still runs in graph search.
     const graphQuery = expansion
-      ? [expansion.rewritten, ...expansion.alternatives].filter(Boolean).join(' ')
+      ? [expansion.original, expansion.rewritten, ...expansion.alternatives]
+          .filter(Boolean)
+          .join(' ')
       : retrievalQuery;
 
     const vectorQueries = [
