@@ -166,6 +166,7 @@ Ingestion status flow: `pending → parsing → embedding → extracting → com
 | [docs/FEATURES.md](docs/FEATURES.md) | Feature status tracker |
 | [docs/DESIGN_PHILOSOPHY.md](docs/DESIGN_PHILOSOPHY.md) | Engineering approach |
 | [docs/DOMAIN_NOTES.md](docs/DOMAIN_NOTES.md) | Entity / relationship rules |
+| [docs/FEATURE_TEST_PATH.md](docs/FEATURE_TEST_PATH.md) | End-to-end feature test checklist |
 | [docs/ai-reviews/](docs/ai-reviews/) | AI-assisted development log |
 
 ## MVP milestones
