@@ -133,6 +133,7 @@ export default function ChatPage() {
               graphPaths: data.graphPaths ?? [],
               expansion: data.expansion,
               rerank: data.rerank,
+              cache: data.cache,
               query: text,
               hops,
             });

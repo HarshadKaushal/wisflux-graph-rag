@@ -8,10 +8,12 @@ import {
   neo4jConfig,
   openAiConfig,
   postgresConfig,
+  redisConfig,
 } from './config/configuration';
 import { PostgresModule } from './database/postgres.module';
 import { DatabaseModule } from './database/database.module';
 import { Neo4jModule } from './database/neo4j.module';
+import { CacheModule } from './cache/cache.module';
 import { GraphModule } from './graph/graph.module';
 import { HealthModule } from './health/health.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -34,10 +36,11 @@ function resolveEnvPaths(): string[] {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: resolveEnvPaths(),
-      load: [appConfig, postgresConfig, neo4jConfig, openAiConfig],
+      load: [appConfig, postgresConfig, neo4jConfig, openAiConfig, redisConfig],
       validate: validateEnv,
     }),
     AppConfigModule,
+    CacheModule,
     PostgresModule,
     DatabaseModule,
     Neo4jModule,

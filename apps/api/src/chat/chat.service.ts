@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import OpenAI from 'openai';
 import type { ChatResponse } from '@graph-rag/shared';
+import { CacheService } from '../cache/cache.service';
 import type { OpenAiConfig } from '../config/configuration';
 import { RetrievalService } from '../retrieval/retrieval.service';
 import {
@@ -19,6 +20,7 @@ export class ChatService {
   constructor(
     private readonly config: ConfigService,
     private readonly retrieval: RetrievalService,
+    private readonly cache: CacheService,
   ) {
     const openai = this.config.get<OpenAiConfig>('openai')!;
     this.client = new OpenAI({ apiKey: openai.apiKey });
@@ -36,6 +38,37 @@ export class ChatService {
     this.initSse(res);
 
     try {
+      const chatCacheKey = this.cache.chatKey({
+        message: message.trim(),
+        documentIds: [...(documentIds ?? [])].sort(),
+        hops,
+        expandQuery,
+        rerank,
+        mode: 'stream',
+      });
+      const cachedAnswer = await this.cache.getJson<ChatResponse>(chatCacheKey);
+
+      if (cachedAnswer) {
+        this.writeEvent(res, 'metadata', {
+          sources: cachedAnswer.sources,
+          graphFacts: cachedAnswer.graphFacts,
+          entities: cachedAnswer.entities,
+          graphPaths: cachedAnswer.graphPaths,
+          hops,
+          expansion: cachedAnswer.expansion,
+          rerank: cachedAnswer.rerank,
+          cache: {
+            redis: this.cache.isReady(),
+            responseHit: true,
+            hybridHit: true,
+          },
+        });
+        this.writeEvent(res, 'token', { content: cachedAnswer.answer });
+        this.writeEvent(res, 'done', {});
+        res.end();
+        return;
+      }
+
       const hybrid = await this.retrieval.hybrid(message, {
         documentIds,
         hops,
@@ -51,6 +84,7 @@ export class ChatService {
         hops,
         expansion: hybrid.expansion,
         rerank: hybrid.rerank,
+        cache: hybrid.cache,
       });
 
       if (hybrid.sources.length === 0 && hybrid.graphFacts.length === 0) {
@@ -74,12 +108,28 @@ export class ChatService {
         ],
       });
 
+      let answer = '';
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content;
         if (content) {
+          answer += content;
           this.writeEvent(res, 'token', { content });
         }
       }
+
+      await this.cache.setJson(
+        chatCacheKey,
+        {
+          answer,
+          sources: hybrid.sources,
+          graphFacts: hybrid.graphFacts,
+          entities: hybrid.entities,
+          graphPaths: hybrid.graphPaths,
+          expansion: hybrid.expansion,
+          rerank: hybrid.rerank,
+        } satisfies ChatResponse,
+        this.cache.getResponseTtl(),
+      );
 
       this.writeEvent(res, 'done', {});
       res.end();
@@ -99,6 +149,27 @@ export class ChatService {
     expandQuery = true,
     rerank = true,
   ): Promise<ChatResponse> {
+    const chatCacheKey = this.cache.chatKey({
+      message: message.trim(),
+      documentIds: [...(documentIds ?? [])].sort(),
+      hops,
+      expandQuery,
+      rerank,
+      mode: 'sync',
+    });
+
+    const cached = await this.cache.getJson<ChatResponse>(chatCacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        cache: {
+          redis: this.cache.isReady(),
+          responseHit: true,
+          hybridHit: true,
+        },
+      };
+    }
+
     const hybrid = await this.retrieval.hybrid(message, {
       documentIds,
       hops,
@@ -115,6 +186,7 @@ export class ChatService {
         graphPaths: [],
         expansion: hybrid.expansion,
         rerank: hybrid.rerank,
+        cache: hybrid.cache,
       };
     }
 
@@ -129,7 +201,7 @@ export class ChatService {
       ],
     });
 
-    return {
+    const result: ChatResponse = {
       answer: response.choices[0]?.message?.content ?? '',
       sources: hybrid.sources,
       graphFacts: hybrid.graphFacts,
@@ -137,7 +209,19 @@ export class ChatService {
       graphPaths: hybrid.graphPaths,
       expansion: hybrid.expansion,
       rerank: hybrid.rerank,
+      cache: {
+        redis: this.cache.isReady(),
+        responseHit: false,
+        hybridHit: hybrid.cache?.hybridHit ?? false,
+      },
     };
+
+    await this.cache.setJson(chatCacheKey, {
+      ...result,
+      cache: undefined,
+    }, this.cache.getResponseTtl());
+
+    return result;
   }
 
   private initSse(res: Response): void {

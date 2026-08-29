@@ -52,9 +52,14 @@ export function EvidenceTabs({
     <div className="evidence-panel panel">
       <div className="evidence-panel-header">
         <h2>Evidence</h2>
-        <Link href="/graph" className="btn btn-secondary btn-tiny">
-          Open graph
-        </Link>
+        <div className="evidence-header-actions">
+          {(evidence.cache?.responseHit || evidence.cache?.hybridHit) && (
+            <span className="badge badge-up">cache hit</span>
+          )}
+          <Link href="/graph" className="btn btn-secondary btn-tiny">
+            Open graph
+          </Link>
+        </div>
       </div>
 
       <div className="tab-row" role="tablist" aria-label="Evidence sections">

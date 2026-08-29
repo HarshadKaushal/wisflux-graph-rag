@@ -372,6 +372,12 @@ textarea {
   padding: 0.85rem;
 }
 
+.evidence-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .evidence-panel-header {
   display: flex;
   justify-content: space-between;

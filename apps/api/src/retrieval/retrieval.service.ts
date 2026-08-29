@@ -9,6 +9,7 @@ import type {
   SourceCitation,
   VectorSearchResult,
 } from '@graph-rag/shared';
+import { CacheService } from '../cache/cache.service';
 import { ExtractionService } from '../extraction/extraction.service';
 import { GraphSearchService } from '../graph/graph-search.service';
 import { VectorService } from '../vector/vector.service';
@@ -21,6 +22,7 @@ export class RetrievalService {
     private readonly vectorService: VectorService,
     private readonly graphSearch: GraphSearchService,
     private readonly extraction: ExtractionService,
+    private readonly cache: CacheService,
   ) {}
 
   async hybrid(
@@ -39,6 +41,71 @@ export class RetrievalService {
     const minConfidence = options.minConfidence ?? 0.5;
     const shouldExpand = options.expandQuery !== false;
     const shouldRerank = options.rerank !== false;
+
+    const cachePayload = {
+      query: query.trim(),
+      documentIds: [...(options.documentIds ?? [])].sort(),
+      topK,
+      hops,
+      minConfidence,
+      expandQuery: shouldExpand,
+      rerank: shouldRerank,
+    };
+    const cacheKey = this.cache.hybridKey(cachePayload);
+    const cached = await this.cache.getJson<HybridRetrievalResponse>(cacheKey);
+    if (cached) {
+      this.logger.debug(`Hybrid cache hit for "${query.trim().slice(0, 60)}"`);
+      return {
+        ...cached,
+        cache: {
+          redis: this.cache.isReady(),
+          hybridHit: true,
+        },
+      };
+    }
+
+    const result = await this.hybridUncached(query, {
+      documentIds: options.documentIds,
+      topK,
+      hops,
+      minConfidence,
+      expandQuery: shouldExpand,
+      rerank: shouldRerank,
+    });
+
+    const toStore: HybridRetrievalResponse = {
+      ...result,
+      cache: undefined,
+    };
+    await this.cache.setJson(
+      cacheKey,
+      toStore,
+      this.cache.getResponseTtl(),
+    );
+
+    return {
+      ...result,
+      cache: {
+        redis: this.cache.isReady(),
+        hybridHit: false,
+      },
+    };
+  }
+
+  private async hybridUncached(
+    query: string,
+    options: {
+      documentIds?: string[];
+      topK: number;
+      hops: number;
+      minConfidence: number;
+      expandQuery: boolean;
+      rerank: boolean;
+    },
+  ): Promise<HybridRetrievalResponse> {
+    const { topK, hops, minConfidence } = options;
+    const shouldExpand = options.expandQuery;
+    const shouldRerank = options.rerank;
     // Pull a wider pool when re-ranking so the LLM can promote buried hits.
     const vectorPool = shouldRerank
       ? Math.min(Math.max(topK * 2, topK + 3), 12)

@@ -53,6 +53,26 @@ class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
+  REDIS_ENABLED?: string;
+
+  @IsOptional()
+  @IsString()
+  REDIS_HOST?: string;
+
+  @IsOptional()
+  @IsNumber()
+  REDIS_PORT?: number;
+
+  @IsOptional()
+  @IsNumber()
+  REDIS_EMBEDDING_TTL_SECONDS?: number;
+
+  @IsOptional()
+  @IsNumber()
+  REDIS_RESPONSE_TTL_SECONDS?: number;
+
+  @IsOptional()
+  @IsString()
   UPLOAD_DIR?: string;
 
   @IsOptional()
@@ -70,6 +90,9 @@ export function validateEnv(config: Record<string, unknown>) {
     NEO4J_URI: 'bolt://localhost:7687',
     NEO4J_USER: 'neo4j',
     NEO4J_PASSWORD: 'graphrag123',
+    REDIS_ENABLED: 'true',
+    REDIS_HOST: 'localhost',
+    REDIS_PORT: 6379,
     ...config,
   };
 

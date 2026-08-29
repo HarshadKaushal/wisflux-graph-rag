@@ -87,6 +87,7 @@ export type StreamHandlers = {
     hops?: number;
     expansion?: ChatResponse['expansion'];
     rerank?: ChatResponse['rerank'];
+    cache?: ChatResponse['cache'];
   }) => void;
   onToken?: (content: string) => void;
   onDone?: () => void;

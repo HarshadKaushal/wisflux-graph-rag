@@ -5,6 +5,7 @@ import {
   neo4jConfig,
   openAiConfig,
   postgresConfig,
+  redisConfig,
 } from './configuration';
 import { validateEnv } from './env.validation';
 
@@ -14,6 +15,7 @@ import { validateEnv } from './env.validation';
     ConfigModule.forFeature(postgresConfig),
     ConfigModule.forFeature(neo4jConfig),
     ConfigModule.forFeature(openAiConfig),
+    ConfigModule.forFeature(redisConfig),
   ],
   exports: [ConfigModule],
 })

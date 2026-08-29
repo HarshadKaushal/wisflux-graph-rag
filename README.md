@@ -10,13 +10,14 @@ Hybrid **Graph RAG** system for the Wisflux assignment: document ingestion, Neo4
 | Backend | NestJS 11, TypeScript |
 | Graph DB | Neo4j 5 |
 | Vector DB | PostgreSQL 16 + pgvector |
+| Cache | Redis 7 (embeddings + chat/hybrid responses) |
 | LLM | OpenAI (`gpt-4o-mini` + `text-embedding-3-small`) |
 | Monorepo | pnpm workspaces |
 
 ## Prerequisites
 
 - Node.js 20+
-- Docker Desktop (Neo4j + Postgres) — **must be running before starting the API**
+- Docker Desktop (Neo4j + Postgres + Redis) — **must be running before starting the API**
 - OpenAI API key with available credits
 - pnpm optional — use `npx pnpm@9` if not installed globally
 
@@ -180,10 +181,11 @@ Ingestion status flow: `pending → parsing → embedding → extracting → com
 
 - Graph traversal defaults to **2 hops** (UI toggle for 1 or 2); deeper multi-hop (>2) is deferred
 - Relationship direction from LLM extraction can occasionally be inverted (e.g. `FOUNDED`)
-- No Redis caching (last assignment optional still deferred)
+- Relationship direction from LLM extraction can occasionally be inverted (e.g. `FOUNDED`)
 - Graph UI: tabbed evidence on `/chat`; interactive SVG canvas on `/graph` (highlight `[P*]`, drag nodes); full document subgraph explorer is still out of scope
 - Query expansion is on by default (`expandQuery: false` to disable)
 - LLM re-ranking is on by default (`rerank: false` to disable)
+- Redis caching is on when Redis is reachable (`REDIS_ENABLED=false` to disable); API continues without cache if Redis is down
 - TypeORM `synchronize` is **off**; schema + `embedding` column are managed by `DatabaseInitService`. If vector search returns empty after a schema change, call `POST /documents/:id/embed`
 
 ## Neo4j Browser

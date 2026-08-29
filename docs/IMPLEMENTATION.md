@@ -59,7 +59,7 @@ LLM query extraction sometimes misses entities in natural-language questions. Ad
 `synchronize: true` dropped the pgvector `embedding` column every boot (not on the TypeORM entity). Fixed by setting `synchronize: false` and creating tables/columns in `DatabaseInitService`. Re-embed existing docs after upgrade via `POST /documents/:id/embed`.
 
 ### Phase 10 — Submission packaging
-README updated with completed MVP status, API table, UI routes, PowerShell smoke tests, and known limitations. Optional Redis remains deferred; multi-hop, query expansion, interactive path viz, and LLM re-ranking are implemented.
+README updated with completed MVP status, API table, UI routes, PowerShell smoke tests, and known limitations. All assignment optional enhancements are implemented (multi-hop, query expansion, path viz, LLM re-ranking, Redis caching).
 
 ### Optional — Multi-hop (2 hops)
 Default traversal is now 2 hops. Chat UI has a hops toggle. Path summaries (`[P*]`) are built via BFS and injected into hybrid LLM context so connection questions work (e.g. Carol → Acme → Beta Labs).
@@ -73,9 +73,12 @@ Chat side panel renders retrieved `graphPaths` as an SVG node-edge canvas (no Cy
 ### Optional — LLM re-ranking
 After hybrid retrieval, an LLM reorders document excerpts and graph facts by answer relevance (wider vector pool → cut to topK). Default on (`rerank: false` to disable). Evidence panel shows before/after order for explainability.
 
+### Optional — Redis caching
+Redis caches (1) OpenAI embeddings by model+text hash, (2) hybrid retrieval payloads, (3) chat answers (sync + stream replay). Keys include query scope (docs/hops/expand/rerank). Fail-open: if Redis is down, the API logs a warning and continues. Health exposes `redis` status; Evidence shows a cache-hit badge on replay.
+
 ## Future Work — Scale
 
-- Async job queue (Bull + Redis) for ingestion
+- Async job queue (Bull + Redis) for ingestion beyond simple response caching
 - Batch embedding with rate-limit handling
 - HNSW index tuning on pgvector
 - Neo4j read replicas for graph queries

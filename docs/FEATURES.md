@@ -76,7 +76,7 @@
 
 | Feature | Status |
 |---------|--------|
-| Redis caching | ⏳ Pending |
+| Redis caching | ✅ Completed | Embeddings + hybrid + chat response cache; fail-open if Redis down |
 | Re-ranking | ✅ Completed | LLM reorders chunks + graph facts after hybrid retrieval |
 | Multi-hop traversal (2 hops) | ✅ Completed | Default hops=2; UI toggle; path summaries [P*] |
 | Query expansion | ✅ Completed | LLM rewrite + alternatives before hybrid retrieval |

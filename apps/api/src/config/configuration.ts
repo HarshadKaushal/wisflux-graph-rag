@@ -28,6 +28,14 @@ export interface OpenAiConfig {
   chatModel: string;
 }
 
+export interface RedisConfig {
+  enabled: boolean;
+  host: string;
+  port: number;
+  embeddingTtlSeconds: number;
+  responseTtlSeconds: number;
+}
+
 export const appConfig = registerAs(
   'app',
   (): AppConfig => ({
@@ -66,5 +74,22 @@ export const openAiConfig = registerAs(
     embeddingModel:
       process.env.OPENAI_EMBEDDING_MODEL ?? 'text-embedding-3-small',
     chatModel: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4o-mini',
+  }),
+);
+
+export const redisConfig = registerAs(
+  'redis',
+  (): RedisConfig => ({
+    enabled: (process.env.REDIS_ENABLED ?? 'true').toLowerCase() !== 'false',
+    host: process.env.REDIS_HOST ?? 'localhost',
+    port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+    embeddingTtlSeconds: parseInt(
+      process.env.REDIS_EMBEDDING_TTL_SECONDS ?? '604800',
+      10,
+    ),
+    responseTtlSeconds: parseInt(
+      process.env.REDIS_RESPONSE_TTL_SECONDS ?? '3600',
+      10,
+    ),
   }),
 );

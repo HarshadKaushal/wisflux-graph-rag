@@ -4,6 +4,7 @@ import type {
   GraphPath,
   QueryExpansion,
   RerankMeta,
+  CacheMeta,
   SourceCitation,
 } from '@graph-rag/shared';
 
@@ -14,6 +15,7 @@ export type ChatEvidence = {
   graphPaths: GraphPath[];
   expansion?: QueryExpansion;
   rerank?: RerankMeta;
+  cache?: CacheMeta;
   query?: string;
   hops?: number;
   updatedAt: string;

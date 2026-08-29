@@ -61,6 +61,7 @@ export interface HealthCheckResponse {
     postgres: ServiceStatus;
     neo4j: ServiceStatus;
     openai: ServiceStatus;
+    redis: ServiceStatus;
   };
 }
 
@@ -158,6 +159,12 @@ export interface RerankMeta {
   factsAfter: string[];
 }
 
+export interface CacheMeta {
+  redis: boolean;
+  hybridHit?: boolean;
+  responseHit?: boolean;
+}
+
 export interface ChatResponse {
   answer: string;
   sources: SourceCitation[];
@@ -166,6 +173,7 @@ export interface ChatResponse {
   graphPaths: GraphPath[];
   expansion?: QueryExpansion;
   rerank?: RerankMeta;
+  cache?: CacheMeta;
 }
 
 export interface GraphSearchRequest {
@@ -222,4 +230,5 @@ export interface HybridRetrievalResponse {
   context: string;
   expansion?: QueryExpansion;
   rerank?: RerankMeta;
+  cache?: CacheMeta;
 }

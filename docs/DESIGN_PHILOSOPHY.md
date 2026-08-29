@@ -24,6 +24,7 @@ If you cannot explain a module in a code review, refactor until you can. AI gene
 - pgvector over Pinecone (local, no SaaS)
 - SSE over WebSockets (one-way stream)
 - In-process ingestion over Bull/Redis queue (for must-have)
+- Redis used optionally for embedding/response caching (assignment enhancement)
 - LLM extraction over spaCy (TypeScript-only stack)
 
 ## Modular Service Boundaries (NestJS)
