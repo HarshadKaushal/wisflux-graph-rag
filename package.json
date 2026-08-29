@@ -1,0 +1,15 @@
+{
+  "name": "graph-rag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Graph RAG assignment - NestJS + Next.js + Neo4j + pgvector",
+  "scripts": {
+    "dev:api": "pnpm --filter @graph-rag/api dev",
+    "dev:web": "pnpm --filter @graph-rag/web dev",
+    "build": "pnpm run -r build",
+    "build:shared": "pnpm --filter @graph-rag/shared build"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
