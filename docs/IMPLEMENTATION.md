@@ -59,13 +59,19 @@ LLM query extraction sometimes misses entities in natural-language questions. Ad
 `synchronize: true` dropped the pgvector `embedding` column every boot (not on the TypeORM entity). Fixed by setting `synchronize: false` and creating tables/columns in `DatabaseInitService`. Re-embed existing docs after upgrade via `POST /documents/:id/embed`.
 
 ### Phase 10 — Submission packaging
-README updated with completed MVP status, API table, UI routes, PowerShell smoke tests, and known limitations. Optional enhancements (Redis, re-ranking, deep multi-hop, query expansion, interactive graph viz) remain deferred by design.
+README updated with completed MVP status, API table, UI routes, PowerShell smoke tests, and known limitations. Optional Redis remains deferred; multi-hop, query expansion, interactive path viz, and LLM re-ranking are implemented.
 
 ### Optional — Multi-hop (2 hops)
 Default traversal is now 2 hops. Chat UI has a hops toggle. Path summaries (`[P*]`) are built via BFS and injected into hybrid LLM context so connection questions work (e.g. Carol → Acme → Beta Labs).
 
 ### Optional — Query expansion
 Before hybrid retrieval, an LLM rewrites vague questions (e.g. "who started acme?" → "Who were the founders of Acme Corporation?") and supplies short alternatives. Vector search uses rewritten (+ original merge); graph search uses rewritten + alternatives for entity matching. Toggleable in chat UI.
+
+### Optional — Interactive path visualization
+Chat side panel renders retrieved `graphPaths` as an SVG node-edge canvas (no Cytoscape/D3 dependency). Layer layout from path start entities; click a `[P*]` row to highlight the chain; drag nodes; click edges for evidence. Reuses SSE metadata only — UI never invents paths.
+
+### Optional — LLM re-ranking
+After hybrid retrieval, an LLM reorders document excerpts and graph facts by answer relevance (wider vector pool → cut to topK). Default on (`rerank: false` to disable). Evidence panel shows before/after order for explainability.
 
 ## Future Work — Scale
 
@@ -77,8 +83,8 @@ Before hybrid retrieval, an LLM rewrites vague questions (e.g. "who started acme
 
 ## Future Work — Accuracy
 
-- Re-ranking retrieved chunks (cross-encoder or LLM)
+- Cross-encoder re-ranking (optional alternative to LLM re-rank)
 - Hybrid score weighting (graph vs vector)
-- Query expansion
 - Entity deduplication / fuzzy matching
 - Chunk size tuning per document type
+- Full-document subgraph explorer UI (beyond path canvas)

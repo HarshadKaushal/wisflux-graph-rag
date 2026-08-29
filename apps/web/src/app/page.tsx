@@ -31,6 +31,9 @@ export default async function HomePage() {
         <Link href="/chat" className="btn btn-secondary">
           Open chat
         </Link>
+        <Link href="/graph" className="btn btn-secondary">
+          Graph paths
+        </Link>
       </div>
 
       <div className="panel">

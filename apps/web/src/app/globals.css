@@ -68,12 +68,55 @@ main {
   padding: 2rem 1.5rem 3rem;
 }
 
-main.chat-layout {
-  max-width: 1200px;
+main.workspace {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+main.chat-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-  gap: 1.25rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  gap: 1rem;
+  height: calc(100vh - 3.6rem);
+  min-height: 520px;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+main.graph-workspace {
+  max-width: 1400px;
+}
+
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.75rem;
+}
+
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.workspace-header h1 {
+  margin-bottom: 0.15rem;
+}
+
+.lede.tight {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 h1 {
@@ -100,11 +143,19 @@ h2 {
 }
 
 .panel {
-  margin-top: 1.25rem;
+  margin-top: 0;
   padding: 1.25rem;
   border: 1px solid #334155;
   border-radius: 0.75rem;
   background: #1e293b;
+}
+
+main:not(.workspace) .panel {
+  margin-top: 1.25rem;
+}
+
+.chat-main > .panel.tight {
+  flex-shrink: 0;
 }
 
 .panel.tight {
@@ -257,8 +308,8 @@ textarea {
 }
 
 .chat-thread {
-  min-height: 320px;
-  max-height: 52vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -296,16 +347,125 @@ textarea {
 }
 
 .composer {
-  margin-top: 1rem;
+  flex-shrink: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.65rem;
+}
+
+.composer textarea {
+  min-height: 64px;
+  resize: none;
 }
 
 .chat-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.evidence-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  padding: 0.85rem;
+}
+
+.evidence-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  flex-shrink: 0;
+}
+
+.evidence-panel-header h2 {
+  margin: 0;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.tab {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tab:hover {
+  color: #e2e8f0;
+}
+
+.tab.active {
+  color: #0f172a;
+  background: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.tab-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.tab.active .tab-count {
+  opacity: 1;
+}
+
+.tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.btn-block {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.graph-grid {
   display: grid;
-  gap: 0;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.7fr);
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+.graph-canvas-panel {
+  min-width: 0;
+}
+
+.graph-path-list {
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
   position: sticky;
   top: 4.5rem;
+}
+
+.empty-state {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  justify-items: start;
+}
+
+.empty-state h2 {
+  margin: 0;
 }
 
 .evidence-item {
@@ -357,6 +517,25 @@ textarea {
   grid-template-columns: 1.2fr 1fr 1fr;
 }
 
+.controls-row-4 {
+  grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr));
+}
+
+.rerank-list {
+  margin: 0.35rem 0 0.75rem 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.rerank-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 .expansion-block {
   display: grid;
   gap: 0.35rem;
@@ -388,13 +567,162 @@ textarea {
   color: #e2e8f0;
 }
 
+.path-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0.4rem;
+  padding: 0.65rem 0.35rem;
+}
+
+.path-item:hover {
+  background: #0f172a;
+}
+
+.path-item.active {
+  background: #0f172a;
+  outline: 1px solid #38bdf8;
+}
+
+.path-viz {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.path-viz-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.path-viz-svg {
+  width: 100%;
+  height: auto;
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 0.55rem;
+  touch-action: none;
+}
+
+.path-viz-edge path {
+  stroke: #64748b;
+}
+
+.path-viz-edge.active path {
+  stroke: #38bdf8;
+}
+
+.path-viz-edge.dimmed {
+  opacity: 0.22;
+}
+
+.path-viz-edge {
+  cursor: pointer;
+}
+
+.path-viz-edge-label {
+  fill: #cbd5e1;
+  font-size: 9px;
+  font-weight: 600;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #0b1220;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.path-viz-edge.active .path-viz-edge-label {
+  fill: #7dd3fc;
+  font-weight: 600;
+}
+
+.path-viz-node.dimmed {
+  opacity: 0.22;
+}
+
+.path-viz-node-label {
+  fill: #e2e8f0;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.path-viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+}
+
+.path-viz-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.path-viz-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.path-viz-detail {
+  padding: 0.65rem 0.75rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.path-viz-hint {
+  font-size: 0.75rem;
+}
+
+.btn-tiny {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.7rem;
+}
+
 @media (max-width: 900px) {
-  main.chat-layout {
+  main.chat-workspace {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .chat-thread {
+    min-height: 280px;
+    max-height: 45vh;
   }
 
   .chat-side {
+    height: auto;
+  }
+
+  .evidence-panel {
+    height: auto;
+    max-height: none;
+  }
+
+  .tab-body {
+    max-height: 42vh;
+  }
+
+  .graph-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-path-list {
     position: static;
+    max-height: none;
   }
 
   .controls-row {
@@ -402,6 +730,14 @@ textarea {
   }
 
   .controls-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-row-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .rerank-columns {
     grid-template-columns: 1fr;
   }
 }

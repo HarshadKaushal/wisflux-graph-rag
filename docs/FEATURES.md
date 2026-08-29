@@ -65,9 +65,10 @@
 |---------|--------|-------|
 | Health dashboard | ✅ Completed | Phase 0 — shows API connectivity |
 | File upload page | ✅ Completed | Phase 8 — upload + status polling |
-| Chat interface | ✅ Completed | Phase 8 — SSE streaming chat |
+| Chat interface | ✅ Completed | Phase 8 — SSE streaming chat; viewport shell + tabs |
 | Sources panel | ✅ Completed | Phase 9 — chunk citations [S*] |
 | Graph path display | ✅ Completed | Phase 9 — graph facts [G*] + entities |
+| Interactive path canvas | ✅ Completed | Optional — `/graph` page + chat Paths tab |
 
 ---
 
@@ -76,7 +77,7 @@
 | Feature | Status |
 |---------|--------|
 | Redis caching | ⏳ Pending |
-| Re-ranking | ⏳ Pending |
+| Re-ranking | ✅ Completed | LLM reorders chunks + graph facts after hybrid retrieval |
 | Multi-hop traversal (2 hops) | ✅ Completed | Default hops=2; UI toggle; path summaries [P*] |
 | Query expansion | ✅ Completed | LLM rewrite + alternatives before hybrid retrieval |
-| Interactive graph visualization | ⏳ Pending |
+| Interactive graph visualization | ✅ Completed | SVG path canvas on chat; click path highlight, drag nodes, edge evidence |

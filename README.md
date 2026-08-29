@@ -81,11 +81,12 @@ Open http://localhost:3000 — health dashboard should show postgres, neo4j, and
 1. Open http://localhost:3000/upload
 2. Upload `samples/acme-company.md`
 3. Wait until status is **`completed`** (chunks + entities populated)
-4. Open http://localhost:3000/chat
-5. Select the document and ask:
+4. Open http://localhost:3000/chat, select the document, and ask:
+   - *How is Carol Diaz connected to Beta Labs?*
    - *Who leads development of the GraphRAG Engine?*
-   - *Who founded Acme Corporation?*
-6. Confirm the answer cites `[G*]` / `[S*]`, and the side panel shows sources + graph facts
+5. Use the tabbed **Evidence** panel (Sources / Facts / Paths) — no endless scroll
+6. Open http://localhost:3000/graph for the full interactive path canvas
+7. Confirm answers cite `[G*]` / `[S*]` / `[P*]` where relevant
 
 ### curl / PowerShell smoke tests
 
@@ -139,7 +140,8 @@ Ingestion status flow: `pending → parsing → embedding → extracting → com
 |-------|---------|
 | `/` | Home + API health |
 | `/upload` | Upload + document status list |
-| `/chat` | Streaming chat + sources / graph facts / entities |
+| `/chat` | Streaming chat + tabbed evidence panel |
+| `/graph` | Full-page interactive path visualization |
 
 ## Project structure
 
@@ -178,9 +180,10 @@ Ingestion status flow: `pending → parsing → embedding → extracting → com
 
 - Graph traversal defaults to **2 hops** (UI toggle for 1 or 2); deeper multi-hop (>2) is deferred
 - Relationship direction from LLM extraction can occasionally be inverted (e.g. `FOUNDED`)
-- No Redis caching or re-ranking (optional enhancements)
-- Graph UI shows facts, entities, path summaries (`P*`), and query expansion; not an interactive canvas
+- No Redis caching (last assignment optional still deferred)
+- Graph UI: tabbed evidence on `/chat`; interactive SVG canvas on `/graph` (highlight `[P*]`, drag nodes); full document subgraph explorer is still out of scope
 - Query expansion is on by default (`expandQuery: false` to disable)
+- LLM re-ranking is on by default (`rerank: false` to disable)
 - TypeORM `synchronize` is **off**; schema + `embedding` column are managed by `DatabaseInitService`. If vector search returns empty after a schema change, call `POST /documents/:id/embed`
 
 ## Neo4j Browser

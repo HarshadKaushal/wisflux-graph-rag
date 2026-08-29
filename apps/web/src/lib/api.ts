@@ -61,12 +61,19 @@ export async function chat(
   documentIds?: string[],
   hops = 2,
   expandQuery = true,
+  rerank = true,
 ): Promise<ChatResponse> {
   return parseJson(
     await fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, documentIds, hops, expandQuery }),
+      body: JSON.stringify({
+        message,
+        documentIds,
+        hops,
+        expandQuery,
+        rerank,
+      }),
     }),
   );
 }
@@ -79,6 +86,7 @@ export type StreamHandlers = {
     graphPaths: ChatResponse['graphPaths'];
     hops?: number;
     expansion?: ChatResponse['expansion'];
+    rerank?: ChatResponse['rerank'];
   }) => void;
   onToken?: (content: string) => void;
   onDone?: () => void;
@@ -91,11 +99,18 @@ export async function streamChat(
   handlers: StreamHandlers,
   hops = 2,
   expandQuery = true,
+  rerank = true,
 ): Promise<void> {
   const res = await fetch(`${API_URL}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, documentIds, hops, expandQuery }),
+    body: JSON.stringify({
+      message,
+      documentIds,
+      hops,
+      expandQuery,
+      rerank,
+    }),
   });
 
   if (!res.ok || !res.body) {

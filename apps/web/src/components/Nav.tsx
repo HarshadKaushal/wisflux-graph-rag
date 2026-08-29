@@ -7,6 +7,7 @@ const links = [
   { href: '/', label: 'Home' },
   { href: '/upload', label: 'Upload' },
   { href: '/chat', label: 'Chat' },
+  { href: '/graph', label: 'Graph' },
 ];
 
 export function Nav() {

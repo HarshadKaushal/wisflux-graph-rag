@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  DocumentRecord,
-  EntityRecord,
-  GraphFactCitation,
-  GraphPath,
-  QueryExpansion,
-  SourceCitation,
-} from '@graph-rag/shared';
+import type { DocumentRecord } from '@graph-rag/shared';
+import {
+  EvidenceTabs,
+  type EvidenceTab,
+} from '../../components/EvidenceTabs';
+import {
+  emptyEvidence,
+  saveChatEvidence,
+  type ChatEvidence,
+} from '../../lib/evidence-store';
 import { listDocuments, streamChat } from '../../lib/api';
 
 type ChatMessage = {
@@ -17,33 +19,24 @@ type ChatMessage = {
   content: string;
 };
 
-type Evidence = {
-  sources: SourceCitation[];
-  graphFacts: GraphFactCitation[];
-  entities: EntityRecord[];
-  graphPaths: GraphPath[];
-  expansion?: QueryExpansion;
-};
-
 const STORAGE_KEY = 'graph-rag-selected-doc';
 const HOPS_KEY = 'graph-rag-hops';
 const EXPAND_KEY = 'graph-rag-expand-query';
+const RERANK_KEY = 'graph-rag-rerank';
 
 export default function ChatPage() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [hops, setHops] = useState<1 | 2>(2);
   const [expandQuery, setExpandQuery] = useState(true);
+  const [rerank, setRerank] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [evidence, setEvidence] = useState<Evidence>({
-    sources: [],
-    graphFacts: [],
-    entities: [],
-    graphPaths: [],
-  });
+  const [evidence, setEvidence] = useState<ChatEvidence>(emptyEvidence);
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<EvidenceTab>('sources');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadDocs = useCallback(async () => {
@@ -70,6 +63,10 @@ export default function ChatPage() {
       const savedExpand = localStorage.getItem(EXPAND_KEY);
       if (savedExpand === '0') setExpandQuery(false);
       if (savedExpand === '1') setExpandQuery(true);
+
+      const savedRerank = localStorage.getItem(RERANK_KEY);
+      if (savedRerank === '0') setRerank(false);
+      if (savedRerank === '1') setRerank(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load documents');
     }
@@ -98,6 +95,11 @@ export default function ChatPage() {
     localStorage.setItem(EXPAND_KEY, value ? '1' : '0');
   }
 
+  function onToggleRerank(value: boolean) {
+    setRerank(value);
+    localStorage.setItem(RERANK_KEY, value ? '1' : '0');
+  }
+
   async function onSend() {
     const text = input.trim();
     if (!text || busy) return;
@@ -124,13 +126,22 @@ export default function ChatPage() {
         selectedDocId ? [selectedDocId] : undefined,
         {
           onMetadata: (data) => {
-            setEvidence({
+            const next = saveChatEvidence({
               sources: data.sources ?? [],
               graphFacts: data.graphFacts ?? [],
               entities: data.entities ?? [],
               graphPaths: data.graphPaths ?? [],
               expansion: data.expansion,
+              rerank: data.rerank,
+              query: text,
+              hops,
             });
+            setEvidence(next);
+            setSelectedPathId(null);
+            if (data.rerank?.applied) setActiveTab('rerank');
+            else if ((data.graphPaths?.length ?? 0) > 0) setActiveTab('paths');
+            else if ((data.sources?.length ?? 0) > 0) setActiveTab('sources');
+            else if ((data.graphFacts?.length ?? 0) > 0) setActiveTab('facts');
           },
           onToken: (content) => {
             setMessages((prev) =>
@@ -145,6 +156,7 @@ export default function ChatPage() {
         },
         hops,
         expandQuery,
+        rerank,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chat failed');
@@ -160,18 +172,19 @@ export default function ChatPage() {
     }
   }
 
-  const oneHopPaths = evidence.graphPaths.filter((p) => p.hops === 1);
-  const twoHopPaths = evidence.graphPaths.filter((p) => p.hops === 2);
-
   return (
-    <main className="chat-layout">
+    <main className="workspace chat-workspace">
       <section className="chat-main">
-        <h1>Chat</h1>
-        <p className="lede">
-          Ask questions grounded in document chunks and graph relationships.
-        </p>
+        <header className="workspace-header">
+          <div>
+            <h1>Chat</h1>
+            <p className="lede tight">
+              Grounded answers with citations — evidence stays in the side panel.
+            </p>
+          </div>
+        </header>
 
-        <div className="panel tight controls-row controls-row-3">
+        <div className="panel tight controls-row controls-row-4">
           <div className="control">
             <label className="field-label" htmlFor="doc-select">
               Scope to document
@@ -221,14 +234,27 @@ export default function ChatPage() {
               <option value="off">Off</option>
             </select>
           </div>
+
+          <div className="control">
+            <label className="field-label" htmlFor="rerank-select">
+              Re-ranking
+            </label>
+            <select
+              id="rerank-select"
+              value={rerank ? 'on' : 'off'}
+              onChange={(e) => onToggleRerank(e.target.value === 'on')}
+            >
+              <option value="on">On (LLM reorder)</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
         </div>
 
         <div className="chat-thread panel">
           {messages.length === 0 ? (
             <p className="muted">
-              Try a vague question with expansion on: &quot;who started
-              acme?&quot; or multi-hop: &quot;How is Carol Diaz connected to
-              Beta Labs?&quot;
+              Try &quot;who started acme?&quot; or &quot;How is Carol Diaz
+              connected to Beta Labs?&quot;
             </p>
           ) : (
             messages.map((m) => (
@@ -257,7 +283,7 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question…"
-            rows={3}
+            rows={2}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -276,118 +302,14 @@ export default function ChatPage() {
       </section>
 
       <aside className="chat-side">
-        <div className="panel">
-          <h2>Query expansion</h2>
-          {!evidence.expansion ? (
-            <p className="muted">No expansion yet (or disabled).</p>
-          ) : (
-            <div className="expansion-block">
-              <div className="muted path-group-label">Original</div>
-              <p>{evidence.expansion.original}</p>
-              <div className="muted path-group-label">Rewritten</div>
-              <p className="path-summary">{evidence.expansion.rewritten}</p>
-              {evidence.expansion.alternatives.length > 0 && (
-                <>
-                  <div className="muted path-group-label">Alternatives</div>
-                  <ul className="entity-list">
-                    {evidence.expansion.alternatives.map((alt) => (
-                      <li key={alt}>{alt}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="panel">
-          <h2>Sources</h2>
-          {evidence.sources.length === 0 ? (
-            <p className="muted">No chunk sources yet.</p>
-          ) : (
-            evidence.sources.map((s) => (
-              <div key={s.id} className="evidence-item">
-                <div className="evidence-id">{s.id}</div>
-                <div className="muted">
-                  {s.filename}
-                  {s.score != null ? ` · score ${s.score.toFixed(3)}` : ''}
-                </div>
-                <pre className="evidence-body">{s.content.slice(0, 400)}</pre>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="panel">
-          <h2>Graph facts</h2>
-          {evidence.graphFacts.length === 0 ? (
-            <p className="muted">No graph facts yet.</p>
-          ) : (
-            evidence.graphFacts.map((f) => (
-              <div key={f.id} className="evidence-item">
-                <div className="evidence-id">{f.id}</div>
-                <div>
-                  <strong>{f.sourceEntityName}</strong>{' '}
-                  <span className="rel-type">[{f.type}]</span>{' '}
-                  <strong>{f.targetEntityName}</strong>
-                </div>
-                {f.evidence && (
-                  <p className="muted">&ldquo;{f.evidence}&rdquo;</p>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="panel">
-          <h2>
-            Graph paths ({hops} hop{hops > 1 ? 's' : ''})
-          </h2>
-          {evidence.graphPaths.length === 0 ? (
-            <p className="muted">No traversal paths yet.</p>
-          ) : (
-            <>
-              {oneHopPaths.length > 0 && (
-                <div className="path-group">
-                  <div className="muted path-group-label">1-hop</div>
-                  {oneHopPaths.map((p) => (
-                    <div key={p.id} className="evidence-item">
-                      <div className="evidence-id">{p.id}</div>
-                      <div className="path-summary">{p.summary}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {twoHopPaths.length > 0 && (
-                <div className="path-group">
-                  <div className="muted path-group-label">2-hop</div>
-                  {twoHopPaths.map((p) => (
-                    <div key={p.id} className="evidence-item">
-                      <div className="evidence-id">{p.id}</div>
-                      <div className="path-summary">{p.summary}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="panel">
-          <h2>Entities</h2>
-          {evidence.entities.length === 0 ? (
-            <p className="muted">No matched entities yet.</p>
-          ) : (
-            <ul className="entity-list">
-              {evidence.entities.map((e) => (
-                <li key={e.id}>
-                  <strong>{e.name}</strong>
-                  <span className="muted"> · {e.type}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <EvidenceTabs
+          evidence={evidence}
+          hops={hops}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          selectedPathId={selectedPathId}
+          onSelectPath={setSelectedPathId}
+        />
       </aside>
     </main>
   );
