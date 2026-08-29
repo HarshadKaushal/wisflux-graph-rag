@@ -31,6 +31,10 @@ class ChatDto implements ChatRequest {
   @IsOptional()
   @IsBoolean()
   expandQuery?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  rerank?: boolean;
 }
 
 @Controller('chat')
@@ -44,6 +48,7 @@ export class ChatController {
       body.documentIds,
       body.hops,
       body.expandQuery,
+      body.rerank,
     );
   }
 
@@ -58,6 +63,7 @@ export class ChatController {
       body.documentIds,
       body.hops,
       body.expandQuery,
+      body.rerank,
     );
   }
 }

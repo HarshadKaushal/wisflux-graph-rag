@@ -138,12 +138,24 @@ export interface ChatRequest {
   hops?: number;
   /** When true (default), rewrite the query with an LLM before retrieval */
   expandQuery?: boolean;
+  /** When true (default), LLM re-ranks chunks + graph facts after retrieval */
+  rerank?: boolean;
 }
 
 export interface QueryExpansion {
   original: string;
   rewritten: string;
   alternatives: string[];
+}
+
+export interface RerankMeta {
+  applied: boolean;
+  /** Short labels in pre-rerank order */
+  sourcesBefore: string[];
+  /** Short labels in post-rerank order (final [S*] order) */
+  sourcesAfter: string[];
+  factsBefore: string[];
+  factsAfter: string[];
 }
 
 export interface ChatResponse {
@@ -153,6 +165,7 @@ export interface ChatResponse {
   entities: EntityRecord[];
   graphPaths: GraphPath[];
   expansion?: QueryExpansion;
+  rerank?: RerankMeta;
 }
 
 export interface GraphSearchRequest {
@@ -198,6 +211,7 @@ export interface HybridRetrievalRequest {
   hops?: number;
   minConfidence?: number;
   expandQuery?: boolean;
+  rerank?: boolean;
 }
 
 export interface HybridRetrievalResponse {
@@ -207,4 +221,5 @@ export interface HybridRetrievalResponse {
   entities: EntityRecord[];
   context: string;
   expansion?: QueryExpansion;
+  rerank?: RerankMeta;
 }

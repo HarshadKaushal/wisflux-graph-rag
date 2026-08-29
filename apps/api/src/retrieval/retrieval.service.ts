@@ -5,6 +5,7 @@ import type {
   GraphPath,
   HybridRetrievalResponse,
   QueryExpansion,
+  RerankMeta,
   SourceCitation,
   VectorSearchResult,
 } from '@graph-rag/shared';
@@ -30,12 +31,18 @@ export class RetrievalService {
       hops?: number;
       minConfidence?: number;
       expandQuery?: boolean;
+      rerank?: boolean;
     } = {},
   ): Promise<HybridRetrievalResponse> {
     const topK = options.topK ?? 5;
     const hops = options.hops ?? 2;
     const minConfidence = options.minConfidence ?? 0.5;
     const shouldExpand = options.expandQuery !== false;
+    const shouldRerank = options.rerank !== false;
+    // Pull a wider pool when re-ranking so the LLM can promote buried hits.
+    const vectorPool = shouldRerank
+      ? Math.min(Math.max(topK * 2, topK + 3), 12)
+      : topK;
 
     let expansion: QueryExpansion | undefined;
     let retrievalQuery = query.trim();
@@ -46,7 +53,6 @@ export class RetrievalService {
       retrievalQuery = expanded.rewritten || retrievalQuery;
     }
 
-    // Graph matching benefits from rewritten + alternate keywords in one string
     const graphQuery = expansion
       ? [expansion.rewritten, ...expansion.alternatives].filter(Boolean).join(' ')
       : retrievalQuery;
@@ -62,7 +68,7 @@ export class RetrievalService {
     const [vectorBatches, graphResults] = await Promise.all([
       Promise.all(
         vectorQueries.map((q) =>
-          this.vectorService.search(q, topK, options.documentIds),
+          this.vectorService.search(q, vectorPool, options.documentIds),
         ),
       ),
       this.graphSearch.search(
@@ -73,9 +79,9 @@ export class RetrievalService {
       ),
     ]);
 
-    const vectorResults = this.mergeVectorResults(vectorBatches, topK);
+    const vectorResults = this.mergeVectorResults(vectorBatches, vectorPool);
 
-    const sources: SourceCitation[] = vectorResults.map((r, i) => ({
+    let sources: SourceCitation[] = vectorResults.map((r, i) => ({
       id: `S${i + 1}`,
       chunkId: r.chunkId,
       documentId: r.documentId,
@@ -87,7 +93,7 @@ export class RetrievalService {
     }));
 
     const seenRels = new Set<string>();
-    const graphFacts: GraphFactCitation[] = [];
+    let graphFacts: GraphFactCitation[] = [];
 
     for (const rel of graphResults.relationships) {
       const key = `${rel.sourceEntityId}|${rel.type}|${rel.targetEntityId}|${rel.documentId}`;
@@ -106,6 +112,32 @@ export class RetrievalService {
       });
     }
 
+    let rerank: RerankMeta | undefined;
+
+    if (shouldRerank && (sources.length > 1 || graphFacts.length > 1)) {
+      const ranked = await this.applyRerank(
+        retrievalQuery,
+        sources,
+        graphFacts,
+        topK,
+      );
+      sources = ranked.sources;
+      graphFacts = ranked.graphFacts;
+      rerank = ranked.meta;
+    } else {
+      sources = sources.slice(0, topK).map((s, i) => ({ ...s, id: `S${i + 1}` }));
+      graphFacts = graphFacts.map((f, i) => ({ ...f, id: `G${i + 1}` }));
+      if (shouldRerank) {
+        rerank = {
+          applied: false,
+          sourcesBefore: sources.map((s) => this.sourceLabel(s)),
+          sourcesAfter: sources.map((s) => this.sourceLabel(s)),
+          factsBefore: graphFacts.map((f) => this.factLabel(f)),
+          factsAfter: graphFacts.map((f) => this.factLabel(f)),
+        };
+      }
+    }
+
     const graphPaths: GraphPath[] = graphResults.graphPaths.map((path) => ({
       ...path,
     }));
@@ -114,10 +146,85 @@ export class RetrievalService {
     const context = this.buildHybridContext(sources, graphFacts, graphPaths);
 
     this.logger.debug(
-      `Hybrid: ${sources.length} chunks, ${graphFacts.length} graph facts, ${graphPaths.length} paths (hops=${hops})${expansion ? ` expanded="${expansion.rewritten}"` : ''}`,
+      `Hybrid: ${sources.length} chunks, ${graphFacts.length} graph facts, ${graphPaths.length} paths (hops=${hops})${expansion ? ` expanded="${expansion.rewritten}"` : ''}${rerank?.applied ? ' reranked' : ''}`,
     );
 
-    return { sources, graphFacts, graphPaths, entities, context, expansion };
+    return {
+      sources,
+      graphFacts,
+      graphPaths,
+      entities,
+      context,
+      expansion,
+      rerank,
+    };
+  }
+
+  private async applyRerank(
+    query: string,
+    sources: SourceCitation[],
+    graphFacts: GraphFactCitation[],
+    topK: number,
+  ): Promise<{
+    sources: SourceCitation[];
+    graphFacts: GraphFactCitation[];
+    meta: RerankMeta;
+  }> {
+    const sourceTemps = sources.map((s, i) => ({
+      tempId: `C${i + 1}`,
+      source: s,
+      text: `${s.filename ? `(${s.filename}) ` : ''}${s.content}`,
+    }));
+    const factTemps = graphFacts.map((f, i) => ({
+      tempId: `F${i + 1}`,
+      fact: f,
+      text: `${f.sourceEntityName} -[${f.type}]-> ${f.targetEntityName}${f.evidence ? ` — ${f.evidence}` : ''}`,
+    }));
+
+    const sourcesBefore = sourceTemps.map((s) => this.sourceLabel(s.source));
+    const factsBefore = factTemps.map((f) => this.factLabel(f.fact));
+
+    const order = await this.extraction.rerankCandidates(
+      query,
+      sourceTemps.map((s) => ({ id: s.tempId, text: s.text })),
+      factTemps.map((f) => ({ id: f.tempId, text: f.text })),
+    );
+
+    const sourceByTemp = new Map(sourceTemps.map((s) => [s.tempId, s.source]));
+    const factByTemp = new Map(factTemps.map((f) => [f.tempId, f.fact]));
+
+    const orderedSources = order.sourceIds
+      .map((id) => sourceByTemp.get(id))
+      .filter((s): s is SourceCitation => Boolean(s))
+      .slice(0, topK)
+      .map((s, i) => ({ ...s, id: `S${i + 1}` }));
+
+    const orderedFacts = order.factIds
+      .map((id) => factByTemp.get(id))
+      .filter((f): f is GraphFactCitation => Boolean(f))
+      .map((f, i) => ({ ...f, id: `G${i + 1}` }));
+
+    return {
+      sources: orderedSources,
+      graphFacts: orderedFacts,
+      meta: {
+        applied: true,
+        sourcesBefore,
+        sourcesAfter: orderedSources.map((s) => this.sourceLabel(s)),
+        factsBefore,
+        factsAfter: orderedFacts.map((f) => this.factLabel(f)),
+      },
+    };
+  }
+
+  private sourceLabel(s: SourceCitation): string {
+    const body = s.content.replace(/\s+/g, ' ').trim();
+    const preview = body.length > 72 ? `${body.slice(0, 70)}…` : body;
+    return preview || s.chunkId.slice(0, 8);
+  }
+
+  private factLabel(f: GraphFactCitation): string {
+    return `${f.sourceEntityName} -[${f.type}]-> ${f.targetEntityName}`;
   }
 
   private mergeVectorResults(

@@ -43,6 +43,10 @@ class HybridRetrievalDto {
   @IsOptional()
   @IsBoolean()
   expandQuery?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  rerank?: boolean;
 }
 
 @Controller('retrieval')
@@ -59,6 +63,7 @@ export class RetrievalController {
       hops: body.hops,
       minConfidence: body.minConfidence,
       expandQuery: body.expandQuery,
+      rerank: body.rerank,
     });
   }
 }

@@ -31,6 +31,7 @@ export class ChatService {
     documentIds?: string[],
     hops = 2,
     expandQuery = true,
+    rerank = true,
   ): Promise<void> {
     this.initSse(res);
 
@@ -39,6 +40,7 @@ export class ChatService {
         documentIds,
         hops,
         expandQuery,
+        rerank,
       });
 
       this.writeEvent(res, 'metadata', {
@@ -48,6 +50,7 @@ export class ChatService {
         graphPaths: hybrid.graphPaths,
         hops,
         expansion: hybrid.expansion,
+        rerank: hybrid.rerank,
       });
 
       if (hybrid.sources.length === 0 && hybrid.graphFacts.length === 0) {
@@ -94,11 +97,13 @@ export class ChatService {
     documentIds?: string[],
     hops = 2,
     expandQuery = true,
+    rerank = true,
   ): Promise<ChatResponse> {
     const hybrid = await this.retrieval.hybrid(message, {
       documentIds,
       hops,
       expandQuery,
+      rerank,
     });
 
     if (hybrid.sources.length === 0 && hybrid.graphFacts.length === 0) {
@@ -109,6 +114,7 @@ export class ChatService {
         entities: [],
         graphPaths: [],
         expansion: hybrid.expansion,
+        rerank: hybrid.rerank,
       };
     }
 
@@ -130,6 +136,7 @@ export class ChatService {
       entities: hybrid.entities,
       graphPaths: hybrid.graphPaths,
       expansion: hybrid.expansion,
+      rerank: hybrid.rerank,
     };
   }
 
